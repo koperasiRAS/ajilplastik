@@ -41,6 +41,7 @@ export default function POSPage() {
   const supabase = createClient()
   
   const [profile, setProfile] = useState<any>(null)
+  const [allProducts, setAllProducts] = useState<Product[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -86,7 +87,10 @@ export default function POSPage() {
       if (
         document.activeElement?.tagName === 'INPUT' || 
         document.activeElement?.tagName === 'TEXTAREA' ||
-        document.activeElement?.tagName === 'SELECT'
+        document.activeElement?.tagName === 'SELECT' ||
+        checkoutModalOpen ||
+        unitSelectModal ||
+        receiptModal
       ) return
 
       // Jika yang ditekan adalah karakter tunggal (huruf/angka dari scanner) tanpa modifier
@@ -96,7 +100,34 @@ export default function POSPage() {
     }
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [])
+  }, [checkoutModalOpen, unitSelectModal, receiptModal])
+
+  // Real-time Search & Auto-Add Logic
+  useEffect(() => {
+    if (!searchQuery) {
+      setProducts(allProducts)
+      return
+    }
+
+    const query = searchQuery.toLowerCase()
+    const filtered = allProducts.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      (p.barcode && p.barcode.toLowerCase().includes(query))
+    )
+
+    // Fitur: Jika input SAMA PERSIS dengan barcode salah satu produk
+    // otomatis ditambahkan ke keranjang tanpa perlu tekan Enter
+    const exactMatch = filtered.find(p => p.barcode?.toLowerCase() === query)
+    
+    if (exactMatch) {
+      handleProductClick(exactMatch)
+      setSearchQuery('')
+      if (searchInputRef.current) searchInputRef.current.value = ''
+      setProducts(allProducts)
+    } else {
+      setProducts(filtered)
+    }
+  }, [searchQuery, allProducts])
 
   async function fetchInitialData() {
     setIsLoading(true)
@@ -139,17 +170,11 @@ export default function POSPage() {
     await fetchProducts(branchId)
   }
 
-  async function fetchProducts(branchId: string, search: string = '') {
-    let query = supabase.from('products').select(`
+  async function fetchProducts(branchId: string) {
+    const { data: prodData } = await supabase.from('products').select(`
       id, name, barcode,
       product_units (id, name, conversion_to_base, is_base_unit, sell_price, buy_price)
     `).eq('is_active', true)
-    
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,barcode.eq.${search}`)
-    }
-
-    const { data: prodData } = await query
 
     if (prodData && prodData.length > 0) {
       const prodIds = prodData.map(p => p.id)
@@ -169,26 +194,23 @@ export default function POSPage() {
         stock: stockMap.get(p.id) || 0
       }))
 
+      setAllProducts(mappedProducts)
       setProducts(mappedProducts)
-      
-      // Auto add if perfect barcode match
-      if (search && mappedProducts.length === 1 && mappedProducts[0].barcode === search) {
-        handleProductClick(mappedProducts[0])
-        setSearchQuery('')
-        if (searchInputRef.current) searchInputRef.current.value = ''
-      }
     } else {
+      setAllProducts([])
       setProducts([])
     }
   }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profile?.branch_id) return
-    // Scanner mengetik sangat cepat. Untuk memastikan kita mendapat nilai paling akhir
-    // sebelum React sempat re-render state, kita ambil langsung dari ref DOM
-    const query = searchInputRef.current?.value ?? searchQuery
-    fetchProducts(profile.branch_id, query)
+    // Karena kita sudah pakai real-time filter, kita hanya perlu mengecek 
+    // apakah ada satu produk tersisa di layar, jika ya tambahkan.
+    if (products.length === 1) {
+      handleProductClick(products[0])
+      setSearchQuery('')
+      if (searchInputRef.current) searchInputRef.current.value = ''
+    }
   }
 
   const handleProductClick = (product: Product) => {
