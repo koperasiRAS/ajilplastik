@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Kami akan tetap menggunakan light theme sebagai default POS */
+    --background: #f8fafc;
+    --foreground: #0f172a;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+  /* Sembunyikan semua elemen di body */
+  body * {
+    visibility: hidden;
+  }
+  /* Tampilkan hanya area yang ingin diprint */
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  /* Posisikan area print ke pojok kiri atas */
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 48mm;
+    margin: 0;
+    padding: 0;
+    background: #ffffff !important;
+  }
+  
+  /* Paksa teks hitam solid tanpa antialiasing agar thermal tidak dithering */
+  #print-area, #print-area * {
+    color: #000000 !important;
+    font-family: "Courier New", Courier, monospace !important; /* Gunakan font native yang tajam */
+    font-weight: bold !important; 
+    -webkit-font-smoothing: none !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeSpeed !important;
+    /* TRIK SAKTI: Ubah semua warna abu-abu antialiasing menjadi hitam murni atau putih murni */
+    filter: grayscale(100%) contrast(1000%) !important; 
+  }
+}
