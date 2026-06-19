@@ -119,7 +119,7 @@ export default function POSPage() {
           if (!targetBranchId) {
             targetBranchId = branches[0]?.id
             prof.branch_id = targetBranchId
-            prof.branches = { name: branches[0]?.name }
+            ;(prof as any).branches = { name: branches[0]?.name }
           }
         }
       }
