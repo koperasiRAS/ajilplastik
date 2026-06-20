@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, LogOut, ChartLine, CheckCircle2, Printer } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
-import ReceiptPrint80mm from '@/components/ReceiptPrint80mm'
 import { getLocalISODate } from '@/lib/date-utils'
 
 export default function DashboardPage() {
@@ -25,12 +24,9 @@ export default function DashboardPage() {
   const [stockAlerts, setStockAlerts] = useState<any[]>([])
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [reprintModal, setReprintModal] = useState<ReceiptData | null>(null)
-  const [printSize, setPrintSize] = useState<'58mm' | '80mm'>('58mm')
 
   useEffect(() => {
     checkAuthAndFetchData()
-    const saved = localStorage.getItem('ajil-print-size') as '58mm' | '80mm'
-    if (saved === '80mm' || saved === '58mm') setPrintSize(saved)
   }, [])
 
   const checkAuthAndFetchData = async () => {
@@ -139,9 +135,7 @@ export default function DashboardPage() {
     router.push('/login')
   }
 
-  const handlePrintRequest = (size: '58mm' | '80mm') => {
-    setPrintSize(size)
-    localStorage.setItem('ajil-print-size', size)
+  const handlePrintRequest = () => {
     setTimeout(() => {
       window.print()
     }, 100)
@@ -478,21 +472,12 @@ export default function DashboardPage() {
       </div>
       {/* REPRINT MODAL */}
       {reprintModal && (
-        printSize === '58mm' ? (
-          <ReceiptPrint 
-            data={reprintModal}
-            onClose={() => setReprintModal(null)}
-            onPrintRequest={handlePrintRequest}
-            isReprint={true}
-          />
-        ) : (
-          <ReceiptPrint80mm 
-            data={reprintModal}
-            onClose={() => setReprintModal(null)}
-            onPrintRequest={handlePrintRequest}
-            isReprint={true}
-          />
-        )
+        <ReceiptPrint 
+          data={reprintModal}
+          onClose={() => setReprintModal(null)}
+          onPrintRequest={handlePrintRequest}
+          isReprint={true}
+        />
       )}
     </>
   )

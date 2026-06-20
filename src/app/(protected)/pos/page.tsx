@@ -375,9 +375,7 @@ export default function POSPage() {
 
   const formatRp = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num)
 
-  const handlePrintRequest = (size: '58mm' | '80mm') => {
-    setPrintSize(size)
-    localStorage.setItem('ajil-print-size', size)
+  const handlePrintRequest = () => {
     setTimeout(() => {
       window.print()
     }, 100)

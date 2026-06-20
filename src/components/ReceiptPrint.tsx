@@ -27,7 +27,7 @@ export default function ReceiptPrint({
 }: { 
   data: ReceiptData | null, 
   onClose: () => void,
-  onPrintRequest: (size: '58mm' | '80mm') => void,
+  onPrintRequest: () => void,
   isReprint?: boolean
 }) {
   if (!data) return null
@@ -115,16 +115,10 @@ export default function ReceiptPrint({
           </button>
           <div className="flex flex-[2] gap-2">
             <button 
-              onClick={() => onPrintRequest('58mm')}
+              onClick={() => onPrintRequest()}
               className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-1 transition-colors shadow-sm text-sm"
             >
-              <Printer size={16} /> 58mm
-            </button>
-            <button 
-              onClick={() => onPrintRequest('80mm')}
-              className="flex-1 bg-blue-800 text-white font-semibold py-2 rounded-lg hover:bg-blue-900 flex items-center justify-center gap-1 transition-colors shadow-sm text-sm"
-            >
-              <Printer size={16} /> 80mm
+              <Printer size={16} /> Cetak Struk
             </button>
           </div>
         </div>
