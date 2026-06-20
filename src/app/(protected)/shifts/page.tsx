@@ -17,7 +17,7 @@ type Shift = {
   opened_at: string
   closed_at: string | null
   branches: { name: string }
-  profiles: { full_name: string | null, email: string }
+  profiles: { full_name: string | null }
 }
 
 export default function ShiftsPage() {
@@ -50,7 +50,7 @@ export default function ShiftsPage() {
       .select(`
         *,
         branches(name),
-        profiles:profiles!shifts_cashier_id_fkey(full_name, email)
+        profiles:profiles!shifts_cashier_id_fkey(full_name)
       `)
       .order('opened_at', { ascending: false })
       .limit(50)
@@ -161,7 +161,7 @@ export default function ShiftsPage() {
                       <td className="px-6 py-4">
                         <div className="font-medium text-gray-900 flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5 text-gray-400" />
-                          {shift.profiles.full_name || shift.profiles.email}
+                          {shift.profiles.full_name || 'Kasir'}
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
                           <Store className="w-3.5 h-3.5 text-gray-400" />

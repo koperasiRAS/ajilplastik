@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, ChartLine, CheckCircle2, Printer, ServerCrash } from 'lucide-react'
+import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, ChartLine, CheckCircle2, Printer, ServerCrash, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
@@ -27,9 +27,16 @@ export default function DashboardPage() {
   const [activeShifts, setActiveShifts] = useState<any[]>([])
   const [reprintModal, setReprintModal] = useState<ReceiptData | null>(null)
   const [isResetting, setIsResetting] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
     checkAuthAndFetchData()
+  }, [])
+
+  // Realtime clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
   }, [])
 
   const checkAuthAndFetchData = async () => {
@@ -129,7 +136,7 @@ export default function DashboardPage() {
         .from('shifts')
         .select(`
           id, opened_at, opening_balance,
-          profiles:profiles!shifts_cashier_id_fkey(full_name, email),
+          profiles:profiles!shifts_cashier_id_fkey(full_name),
           branches(name)
         `)
         .eq('status', 'open')
@@ -241,7 +248,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Branch Filter & Actions */}
+        {/* Header with Clock, Branch Filter & Actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
@@ -252,12 +259,25 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Realtime Clock */}
+            <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+              <Clock size={16} className="text-blue-600" />
+              <div className="text-right">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  {currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                <p className="text-lg font-black text-slate-900 tabular-nums tracking-tight">
+                  {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB
+                </p>
+              </div>
+            </div>
+
             {profile?.role === 'owner' && availableBranches.length > 0 && (
               <select 
                 value={selectedBranch}
                 onChange={(e) => handleBranchChange(e.target.value)}
-                className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer"
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer"
               >
                 <option value="">Semua Cabang</option>
                 {availableBranches.map(b => (
@@ -320,7 +340,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-bold text-gray-900 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            {shift.profiles?.full_name || shift.profiles?.email}
+                            {shift.profiles?.full_name || 'Kasir'}
                           </p>
                           <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
                             <Store className="w-3.5 h-3.5" />
