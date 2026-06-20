@@ -79,35 +79,58 @@ export default function DashboardPage() {
     const startStr = getLocalISODate(startDate)
     const endStr = getLocalISODate(endDate)
 
-    // Fetch Summary (Owner: All cashiers, Cashier: Only self, for today only if cashier)
-    const summaryStart = role === 'owner' ? startStr : endStr // Cashier only today
-    
-    const { data: sumData } = await supabase.rpc('fn_get_dashboard_summary', {
-      p_branch_id: branchId || null,
-      p_start_date: summaryStart,
-      p_end_date: endStr,
-      p_cashier_id: role === 'kasir' ? cashierId : null
-    })
-    
-    if (sumData) setSummary(sumData)
-
-    if (role === 'kasir') {
-      const { data: branchSumData } = await supabase.rpc('fn_get_dashboard_summary', {
+    // Fetch Summary (Owner: All cashiers, Cashier: Active shift only)
+    if (role === 'owner') {
+      const summaryStart = startStr
+      
+      const { data: sumData } = await supabase.rpc('fn_get_dashboard_summary', {
         p_branch_id: branchId || null,
         p_start_date: summaryStart,
         p_end_date: endStr,
         p_cashier_id: null
       })
-      if (branchSumData) setBranchSummary(branchSumData)
+      
+      if (sumData) setSummary(sumData)
+    } else {
+      // KASIR LOGIC: Only count data from ACTIVE shift
+      const { data: activeShift } = await supabase.from('shifts')
+        .select('id, opened_at, opening_balance')
+        .eq('cashier_id', cashierId)
+        .eq('status', 'open')
+        .maybeSingle()
 
-      // Fetch recent transactions for this cashier today
-      const { data: recentTrx } = await supabase.from('transactions')
-         .select('id, transaction_number, total_amount, created_at')
-         .eq('cashier_id', cashierId)
-         .gte('created_at', summaryStart + 'T00:00:00.000Z')
-         .order('created_at', { ascending: false })
-         .limit(5)
-      if (recentTrx) setRecentTransactions(recentTrx)
+      if (activeShift) {
+        // Fetch summary for this shift period
+        const { data: sumData } = await supabase.rpc('fn_get_dashboard_summary', {
+          p_branch_id: branchId || null,
+          p_start_date: activeShift.opened_at,
+          p_end_date: new Date().toISOString(),
+          p_cashier_id: cashierId
+        })
+        if (sumData) setSummary(sumData)
+
+        // Fetch recent transactions for this shift
+        const { data: recentTrx } = await supabase.from('transactions')
+           .select('id, transaction_number, total_amount, created_at')
+           .eq('shift_id', activeShift.id)
+           .order('created_at', { ascending: false })
+           .limit(5)
+        if (recentTrx) setRecentTransactions(recentTrx)
+
+        // Fetch Branch Summary since shift started (Total Fisik Laci)
+        const { data: branchSumData } = await supabase.rpc('fn_get_dashboard_summary', {
+          p_branch_id: branchId || null,
+          p_start_date: activeShift.opened_at,
+          p_end_date: new Date().toISOString(),
+          p_cashier_id: null
+        })
+        if (branchSumData) setBranchSummary(branchSumData)
+      } else {
+        // No active shift, reset all kasir data to 0
+        setSummary({ total_omzet: 0, total_transactions: 0, total_profit: 0, total_items_sold: 0 })
+        setBranchSummary({ total_omzet: 0, total_transactions: 0, total_profit: 0, total_items_sold: 0 })
+        setRecentTransactions([])
+      }
     }
 
     // Fetch stock alerts for both owner and cashier (cashier only sees their branch due to RLS/query)
@@ -255,7 +278,7 @@ export default function DashboardPage() {
               {profile?.role === 'owner' ? 'Ringkasan Bisnis' : 'Ringkasan Shift Anda'}
             </h2>
             <p className="text-sm font-medium text-slate-500 mt-1">
-              {profile?.role === 'owner' ? 'Perkembangan 7 hari terakhir' : 'Penjualan hari ini'}
+              {profile?.role === 'owner' ? 'Perkembangan 7 hari terakhir' : 'Selama Shift Aktif Berlangsung'}
             </p>
           </div>
           
@@ -402,7 +425,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-4">
                   {recentTransactions.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">Belum ada transaksi hari ini.</p>
+                    <p className="text-sm text-gray-500 text-center py-4">Belum ada transaksi di shift ini.</p>
                   ) : recentTransactions.map((trx) => (
                     <div key={trx.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors border border-gray-50">
                       <div>
