@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, LogOut, ChartLine, CheckCircle2, Printer } from 'lucide-react'
+import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, LogOut, ChartLine, CheckCircle2, Printer, ServerCrash } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { getLocalISODate } from '@/lib/date-utils'
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [stockAlerts, setStockAlerts] = useState<any[]>([])
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [reprintModal, setReprintModal] = useState<ReceiptData | null>(null)
+  const [isResetting, setIsResetting] = useState(false)
 
   useEffect(() => {
     checkAuthAndFetchData()
@@ -139,6 +140,32 @@ export default function DashboardPage() {
     setTimeout(() => {
       window.print()
     }, 100)
+  }
+
+  const handleResetTransactions = async () => {
+    if (!confirm('PERINGATAN KERAS!\\n\\nApakah Anda yakin ingin MENGHAPUS SEMUA DATA TRANSAKSI? Ini akan menghapus histori penjualan, pengeluaran, pemasukan, log laci, dan mereset stok ke 0! Data produk tidak akan dihapus.\\n\\nKetik "OK" jika Anda mengerti risikonya.')) return
+    
+    // Double confirmation
+    const challenge = prompt('Ketik "HAPUS" untuk melanjutkan reset database:')
+    if (challenge !== 'HAPUS') {
+      alert('Reset dibatalkan.')
+      return
+    }
+
+    setIsResetting(true)
+    try {
+      const { data, error } = await supabase.rpc('fn_reset_transactions')
+      if (error) throw error
+      if (data?.success === false) throw new Error(data.error)
+      
+      alert('Database transaksi berhasil direset! Halaman akan dimuat ulang.')
+      window.location.reload()
+    } catch (err: any) {
+      console.error(err)
+      alert('Gagal mereset database: ' + (err.message || err))
+    } finally {
+      setIsResetting(false)
+    }
   }
 
   const formatRp = (num: number) => {
@@ -462,6 +489,24 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-500">Semua stok aman!</p>
                   </div>
                 )}
+              </div>
+
+              {/* Danger Zone (Reset DB) */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-200 mt-8">
+                <h3 className="text-lg font-bold text-red-600 flex items-center gap-2 mb-2">
+                  <ServerCrash size={20} />
+                  Zona Berbahaya
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Hapus seluruh data transaksi, pemasukan, pengeluaran, dan reset stok jadi 0. (Data produk dan cabang aman).
+                </p>
+                <button
+                  onClick={handleResetTransactions}
+                  disabled={isResetting}
+                  className="w-full bg-red-100 text-red-700 font-bold py-2.5 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                >
+                  {isResetting ? 'Mereset...' : 'Reset Semua Transaksi'}
+                </button>
               </div>
 
             </div>
