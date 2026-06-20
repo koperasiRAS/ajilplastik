@@ -100,14 +100,21 @@ export default function DashboardPage() {
         .maybeSingle()
 
       if (activeShift) {
-        // Fetch summary for this shift period
-        const { data: sumData } = await supabase.rpc('fn_get_dashboard_summary', {
-          p_branch_id: branchId || null,
-          p_start_date: activeShift.opened_at,
-          p_end_date: new Date().toISOString(),
-          p_cashier_id: cashierId
+        // Fetch completed transactions exactly for this shift
+        const { data: shiftTrx } = await supabase.from('transactions')
+           .select('total_amount, status')
+           .eq('shift_id', activeShift.id)
+           .eq('status', 'completed')
+        
+        const totalOmzet = shiftTrx ? shiftTrx.reduce((sum, t) => sum + Number(t.total_amount), 0) : 0
+        const totalTransactions = shiftTrx ? shiftTrx.length : 0
+
+        setSummary({
+          total_omzet: totalOmzet,
+          total_transactions: totalTransactions,
+          total_profit: 0,
+          total_items_sold: 0
         })
-        if (sumData) setSummary(sumData)
 
         // Fetch recent transactions for this shift
         const { data: recentTrx } = await supabase.from('transactions')
@@ -117,11 +124,11 @@ export default function DashboardPage() {
            .limit(5)
         if (recentTrx) setRecentTransactions(recentTrx)
 
-        // Fetch Branch Summary since shift started (Total Fisik Laci)
+        // Fetch Branch Summary for TODAY (using local date strings, same as Owner)
         const { data: branchSumData } = await supabase.rpc('fn_get_dashboard_summary', {
           p_branch_id: branchId || null,
-          p_start_date: activeShift.opened_at,
-          p_end_date: new Date().toISOString(),
+          p_start_date: startStr,
+          p_end_date: endStr,
           p_cashier_id: null
         })
         if (branchSumData) setBranchSummary(branchSumData)
