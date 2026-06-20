@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [topProducts, setTopProducts] = useState<any[]>([])
   const [stockAlerts, setStockAlerts] = useState<any[]>([])
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
+  const [activeShifts, setActiveShifts] = useState<any[]>([])
   const [reprintModal, setReprintModal] = useState<ReceiptData | null>(null)
   const [isResetting, setIsResetting] = useState(false)
 
@@ -122,6 +123,21 @@ export default function DashboardPage() {
         p_sort_by: 'omzet'
       })
       if (topProd) setTopProducts(topProd)
+
+      // Fetch active shifts
+      let shiftQuery = supabase
+        .from('shifts')
+        .select(`
+          id, opened_at, opening_balance,
+          profiles(full_name, email),
+          branches(name)
+        `)
+        .eq('status', 'open')
+      
+      if (branchId) shiftQuery = shiftQuery.eq('branch_id', branchId)
+      
+      const { data: activeShiftsData } = await shiftQuery
+      if (activeShiftsData) setActiveShifts(activeShiftsData)
     }
 
     setIsLoading(false)
@@ -261,7 +277,8 @@ export default function DashboardPage() {
 
         {/* SUMMARY CARDS */}
         {profile?.role === 'owner' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform"><Receipt size={22}/></div>
@@ -286,6 +303,41 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+
+            {/* Active Shifts Widget */}
+            {activeShifts.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden mb-8">
+                <div className="p-6 border-b border-gray-100 bg-emerald-50/50 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    <Store className="w-5 h-5 text-emerald-600" />
+                    Kasir Sedang Aktif (Shift Berjalan)
+                  </h3>
+                </div>
+                <div className="p-0">
+                  <div className="divide-y divide-gray-100">
+                    {activeShifts.map(shift => (
+                      <div key={shift.id} className="p-4 sm:p-6 hover:bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
+                        <div>
+                          <p className="font-bold text-gray-900 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            {shift.profiles?.full_name || shift.profiles?.email}
+                          </p>
+                          <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                            <Store className="w-3.5 h-3.5" />
+                            {shift.branches?.name}
+                          </p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Waktu Mulai</p>
+                          <p className="font-medium text-gray-900">{new Date(shift.opened_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 import Link from 'next/link'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { initQZ, openCashDrawer } from '@/lib/qz-tray'
+import ShiftModal from '@/components/ShiftModal'
+import CloseShiftModal from '@/components/CloseShiftModal'
 
 // Types
 type ProductUnit = {
@@ -65,6 +67,9 @@ export default function POSPage() {
   const [qzStatus, setQzStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
   const [isOpeningDrawer, setIsOpeningDrawer] = useState(false)
 
+  const [activeShift, setActiveShift] = useState<{ id: string, opening_balance: number } | null>(null)
+  const [showCloseShiftModal, setShowCloseShiftModal] = useState(false)
+
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Derived Values
@@ -100,7 +105,9 @@ export default function POSPage() {
         document.activeElement?.tagName === 'SELECT' ||
         checkoutModalOpen ||
         unitSelectModal ||
-        receiptModal
+        receiptModal ||
+        !activeShift ||
+        showCloseShiftModal
       ) return
 
       // Jika yang ditekan adalah karakter tunggal (huruf/angka dari scanner) tanpa modifier
@@ -166,6 +173,19 @@ export default function POSPage() {
       }
 
       setProfile(prof)
+      
+      // Fetch Active Shift
+      const { data: activeShiftData } = await supabase
+        .from('shifts')
+        .select('id, opening_balance')
+        .eq('cashier_id', prof.id)
+        .eq('status', 'open')
+        .maybeSingle()
+        
+      if (activeShiftData) {
+        setActiveShift({ id: activeShiftData.id, opening_balance: Number(activeShiftData.opening_balance) })
+      }
+
       await fetchProducts(targetBranchId)
     }
     setIsLoading(false)
@@ -327,6 +347,7 @@ export default function POSPage() {
     const { data, error } = await supabase.rpc('fn_checkout_pos', {
       p_branch_id: profile.branch_id,
       p_cashier_id: profile.id,
+      p_shift_id: activeShift!.id,
       p_payment_method: paymentMethod,
       p_total_amount: cartTotal,
       p_discount_amount: discountAmount,
@@ -336,7 +357,13 @@ export default function POSPage() {
     setIsSubmitting(false)
 
     if (error || data?.success === false) {
-      setCheckoutError(error?.message || data?.error || 'Terjadi kesalahan saat checkout.')
+      const errMsg = error?.message || data?.error || 'Terjadi kesalahan saat checkout.'
+      setCheckoutError(errMsg)
+      if (errMsg.includes('SHIFT_TIDAK_VALID')) {
+        setActiveShift(null)
+        setCheckoutModalOpen(false)
+        toast.error('Shift tidak valid atau sudah ditutup. Silakan buka shift baru.')
+      }
       return
     }
 
@@ -415,12 +442,34 @@ export default function POSPage() {
 
   return (
     <>
+      {/* Shift Modal (Mandatory if no active shift) */}
+      {!isLoading && !activeShift && profile && (
+        <ShiftModal 
+          branchId={profile.branch_id}
+          onShiftOpened={(id, bal) => setActiveShift({ id, opening_balance: bal })}
+        />
+      )}
+
+      {/* Close Shift Modal */}
+      {showCloseShiftModal && activeShift && (
+        <CloseShiftModal
+          shiftId={activeShift.id}
+          openingBalance={activeShift.opening_balance}
+          onClose={() => setShowCloseShiftModal(false)}
+          onClosed={async () => {
+            setShowCloseShiftModal(false)
+            await supabase.auth.signOut()
+            window.location.href = '/login'
+          }}
+        />
+      )}
+
       <div className="flex flex-col md:flex-row h-[100dvh] bg-slate-50 font-sans overflow-hidden print:hidden">
         {/* LEFT PANEL: PRODUCT SEARCH & LIST */}
       <div className="w-full md:w-3/5 lg:w-2/3 flex flex-col h-[55vh] md:h-full border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50">
         {/* Header */}
         <div className="p-4 bg-blue-600 text-white flex justify-between items-center shadow-sm z-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div>
               <h1 className="font-extrabold text-lg tracking-tight">Ajil Plastik POS</h1>
               <p className="text-xs text-blue-100 flex items-center gap-1 font-medium mt-0.5">
@@ -445,20 +494,32 @@ export default function POSPage() {
               <span className={`w-2 h-2 rounded-full animate-pulse ${qzStatus === 'connected' ? 'bg-green-400' : qzStatus === 'connecting' ? 'bg-yellow-400' : 'bg-red-400'}`}></span>
               <span className="text-blue-100">{qzStatus === 'connected' ? 'QZ Active' : 'QZ Error'}</span>
             </div>
+            
+            {activeShift && (
+              <div className="hidden sm:flex items-center gap-2 ml-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-100 border border-emerald-500/30 rounded-full text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Shift Aktif</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
+            {activeShift && (
+              <button
+                onClick={() => setShowCloseShiftModal(true)}
+                className="flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-white hover:bg-gray-100 transition-colors px-3 py-2 rounded-lg shadow-sm"
+              >
+                Tutup Shift
+              </button>
+            )}
             <button
               onClick={handleManualOpenDrawer}
               disabled={isOpeningDrawer}
               className="flex items-center gap-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-3 py-2 rounded-lg shadow-sm"
             >
-              <Unlock size={14}/>
-              <span className="hidden sm:inline">{isOpeningDrawer ? 'Membuka...' : 'Buka Laci'}</span>
+              <Unlock size={14} />
+              <span className="hidden sm:inline">Laci</span>
             </button>
-            <Link 
-              href="/dashboard" 
-              className="flex items-center gap-2 text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors px-3 py-2 rounded-lg shadow-sm"
-            >
+            <Link href="/" className="flex items-center gap-1.5 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors px-3 py-2 rounded-lg shadow-sm">
               <ArrowLeft size={16}/>
               <span className="hidden sm:inline">Kembali</span>
             </Link>

@@ -16,7 +16,8 @@ import {
   Menu, 
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  History
 } from 'lucide-react'
 
 type SidebarProps = {
@@ -48,6 +49,7 @@ export default function Sidebar({ profile }: SidebarProps) {
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['owner', 'kasir'] },
     { name: 'POS', path: '/pos', icon: <ShoppingCart size={20} />, roles: ['owner', 'kasir'] },
+    { name: 'Riwayat Shift', path: '/shifts', icon: <History size={20} />, roles: ['owner', 'kasir'] },
     { name: 'Inventory', path: '/inventory', icon: <Package size={20} />, roles: ['owner'] },
     { name: 'Pengeluaran', path: '/expenses', icon: <Receipt size={20} />, roles: ['owner'] },
     { name: 'Pemasukan', path: '/incomes', icon: <TrendingUp size={20} />, roles: ['owner'] },
