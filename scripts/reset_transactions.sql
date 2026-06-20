@@ -33,8 +33,16 @@ DELETE FROM public.restocks;
 DELETE FROM public.cash_drawer_logs;
 
 -- 4. Hapus data keuangan lainnya
+-- Disable trigger pembatas waktu 24 jam sementara
+ALTER TABLE public.expenses DISABLE TRIGGER trg_expenses_time_limit;
+ALTER TABLE public.incomes DISABLE TRIGGER trg_incomes_time_limit;
+
 DELETE FROM public.expenses;
 DELETE FROM public.incomes;
+
+-- Enable trigger kembali
+ALTER TABLE public.expenses ENABLE TRIGGER trg_expenses_time_limit;
+ALTER TABLE public.incomes ENABLE TRIGGER trg_incomes_time_limit;
 
 -- 5. Reset semua kuantitas stok barang menjadi 0
 UPDATE public.product_stock SET quantity = 0;
