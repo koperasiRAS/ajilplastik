@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, ChartLine, CheckCircle2, Printer, ServerCrash } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { getLocalISODate } from '@/lib/date-utils'
@@ -144,7 +145,7 @@ export default function DashboardPage() {
     // Double confirmation
     const challenge = prompt('Ketik "HAPUS" untuk melanjutkan reset database:')
     if (challenge !== 'HAPUS') {
-      alert('Reset dibatalkan.')
+      toast('Reset dibatalkan.')
       return
     }
 
@@ -154,11 +155,11 @@ export default function DashboardPage() {
       if (error) throw error
       if (data?.success === false) throw new Error(data.error)
       
-      alert('Database transaksi berhasil direset! Halaman akan dimuat ulang.')
+      toast.success('Database transaksi berhasil direset! Halaman akan dimuat ulang.')
       globalThis.window.location.reload()
     } catch (err: any) {
       console.error(err)
-      alert('Gagal mereset database: ' + (err.message || err))
+      toast.error('Gagal mereset database: ' + (err.message || err))
     } finally {
       setIsResetting(false)
     }
@@ -214,7 +215,7 @@ export default function DashboardPage() {
       setReprintModal(receiptData)
     } catch (err) {
       console.error(err)
-      alert('Gagal mengambil detail struk.')
+      toast.error('Gagal mengambil detail struk.')
     }
   }
 

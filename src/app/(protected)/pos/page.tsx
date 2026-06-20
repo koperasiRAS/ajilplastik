@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, Store, Unlock } from 'lucide-react'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { initQZ, openCashDrawer } from '@/lib/qz-tray'
@@ -228,7 +229,7 @@ export default function POSPage() {
     } else if (product.product_units.length > 1) {
       setUnitSelectModal(product)
     } else {
-      alert('Produk ini belum memiliki satuan harga.')
+      toast.error('Produk ini belum memiliki satuan harga.')
     }
   }
 
@@ -236,7 +237,7 @@ export default function POSPage() {
     // Tentative client stock check
     const existingQtyBase = cart.filter(c => c.product_id === product.id).reduce((sum, c) => sum + (c.quantity * c.conversion_to_base), 0)
     if (existingQtyBase + unit.conversion_to_base > product.stock) {
-      alert(`Stok tidak cukup! Sisa stok dasar: ${product.stock}`)
+      toast.error(`Stok tidak cukup! Sisa stok dasar: ${product.stock}`)
       return
     }
 
@@ -364,7 +365,7 @@ export default function POSPage() {
       try {
         await openCashDrawer()
       } catch (err) {
-        alert('Gagal membuka laci otomatis. Pastikan QZ Tray menyala, lalu buka manual dengan kunci atau tombol Buka Laci.')
+        toast.error('Gagal membuka laci otomatis. Pastikan QZ Tray menyala, lalu buka manual dengan kunci atau tombol Buka Laci.', { duration: 5000 })
       }
     }
 
@@ -398,13 +399,13 @@ export default function POSPage() {
       })
 
       if (error) {
-        alert('Gagal mencatat log buka laci: ' + error.message)
+        toast.error('Gagal mencatat log buka laci: ' + error.message)
         return
       }
 
       await openCashDrawer()
     } catch (err: any) {
-      alert(`Gagal membuka laci kasir.\n\nPastikan:\n1. QZ Tray sedang berjalan\n2. Printer terhubung dan menyala\n\nDetail: ${err?.message || err}`)
+      toast.error(`Gagal membuka laci kasir.\n\nPastikan:\n1. QZ Tray sedang berjalan\n2. Printer terhubung dan menyala\n\nDetail: ${err?.message || err}`, { duration: 6000 })
     } finally {
       setIsOpeningDrawer(false)
     }

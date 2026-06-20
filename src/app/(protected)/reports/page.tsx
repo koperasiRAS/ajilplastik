@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import { Store, Calendar, TrendingUp, TrendingDown, ArrowLeft, BarChart3, Package, DollarSign } from 'lucide-react'
 import { getLocalISODate } from '@/lib/date-utils'
 
@@ -44,7 +45,7 @@ export default function ReportsPage() {
 
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (!prof || prof.role !== 'owner') {
-      alert('Hanya Owner yang dapat mengakses Laporan Analisis.')
+      toast.error('Hanya Owner yang dapat mengakses Laporan Analisis.')
       router.push('/dashboard')
       return
     }

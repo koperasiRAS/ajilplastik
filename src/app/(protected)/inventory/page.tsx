@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Search, Plus, Edit2, Archive, ArchiveRestore, PackagePlus, History, Settings2, Store, ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
 import ProductFormModal from './components/ProductFormModal'
 import RestockModal from './components/RestockModal'
@@ -129,7 +130,7 @@ export default function InventoryPage() {
       if (!error) {
         setProducts(products.map(p => p.id === product.id ? { ...p, is_active: newStatus } : p))
       } else {
-        alert('Gagal merubah status produk.')
+        toast.error('Gagal merubah status produk.')
       }
     }
   }

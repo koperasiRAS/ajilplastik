@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Store, Calendar, ArrowLeft, Plus, Edit2, Trash2, Receipt, Image as ImageIcon, Download, Upload, AlertCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function ExpensesPage() {
   const [profile, setProfile] = useState<any>(null)
@@ -47,7 +48,7 @@ export default function ExpensesPage() {
 
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (!prof || prof.role !== 'owner') {
-      alert('Akses ditolak. Halaman ini khusus Owner.')
+      toast.error('Akses ditolak. Halaman ini khusus Owner.')
       return router.push('/dashboard')
     }
     setProfile(prof)
@@ -170,7 +171,7 @@ export default function ExpensesPage() {
     if (!confirm('Hapus pengeluaran ini?')) return
     const { error } = await supabase.from('expenses').delete().eq('id', id)
     if (error) {
-      alert(error.message)
+      toast.error(error.message)
     } else {
       fetchExpenses(selectedBranch, startDate, endDate)
     }
