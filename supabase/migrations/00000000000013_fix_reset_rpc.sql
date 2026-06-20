@@ -20,6 +20,7 @@ BEGIN
   -- Delete data with WHERE clause to bypass pg_safeupdate
   DELETE FROM public.transaction_items WHERE true;
   DELETE FROM public.transactions WHERE true;
+  DELETE FROM public.shifts WHERE true;
   DELETE FROM public.stock_movements WHERE true;
   DELETE FROM public.restocks WHERE true;
   DELETE FROM public.cash_drawer_logs WHERE true;
