@@ -55,9 +55,12 @@ export const openCashDrawer = async (printerName?: string) => {
 
     const config = qz.configs.create(targetPrinter)
 
-    // Standard ESC/POS kick drawer command: ESC p 0 25 250 (0x1B 0x70 0x00 0x19 0xFA)
+    // Standard ESC/POS kick drawer command
+    // \x1B\x40 = ESC @ (Initialize/Reset Printer state)
+    // \x1B\x70\x00\x19\xFA = ESC p 0 25 250 (Kick drawer)
     const data = [
-      '\x1B' + '\x70' + '\x00' + '\x19' + '\xFA'
+      '\x1B\x40',
+      '\x1B\x70\x00\x19\xFA'
     ]
 
     await qz.print(config, data)
