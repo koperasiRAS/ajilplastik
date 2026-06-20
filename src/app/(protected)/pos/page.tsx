@@ -405,8 +405,8 @@ export default function POSPage() {
       }
 
       await openCashDrawer()
-    } catch (err) {
-      alert('Gagal membuka laci. Pastikan QZ Tray berjalan.')
+    } catch (err: any) {
+      alert(`Gagal membuka laci. Error: ${err?.message || err}`)
     }
   }
 
