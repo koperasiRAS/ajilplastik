@@ -67,7 +67,7 @@ export default function POSPage() {
   const [qzStatus, setQzStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
   const [isOpeningDrawer, setIsOpeningDrawer] = useState(false)
 
-  const [activeShift, setActiveShift] = useState<{ id: string, opening_balance: number } | null>(null)
+  const [activeShift, setActiveShift] = useState<{ id: string, opening_balance: number, opened_at: string } | null>(null)
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -177,13 +177,13 @@ export default function POSPage() {
       // Fetch Active Shift
       const { data: activeShiftData } = await supabase
         .from('shifts')
-        .select('id, opening_balance')
+        .select('id, opening_balance, opened_at')
         .eq('cashier_id', prof.id)
         .eq('status', 'open')
         .maybeSingle()
         
       if (activeShiftData) {
-        setActiveShift({ id: activeShiftData.id, opening_balance: Number(activeShiftData.opening_balance) })
+        setActiveShift({ id: activeShiftData.id, opening_balance: Number(activeShiftData.opening_balance), opened_at: activeShiftData.opened_at })
       }
 
       await fetchProducts(targetBranchId)
@@ -446,20 +446,21 @@ export default function POSPage() {
       {!isLoading && !activeShift && profile && (
         <ShiftModal 
           branchId={profile.branch_id}
-          onShiftOpened={(id, bal) => setActiveShift({ id, opening_balance: bal })}
+          onShiftOpened={(id, bal) => setActiveShift({ id, opening_balance: bal, opened_at: new Date().toISOString() })}
         />
       )}
 
-      {/* Close Shift Modal */}
       {showCloseShiftModal && activeShift && (
         <CloseShiftModal
           shiftId={activeShift.id}
           openingBalance={activeShift.opening_balance}
+          branchId={profile?.branch_id}
+          shiftOpenedAt={activeShift.opened_at}
           onClose={() => setShowCloseShiftModal(false)}
           onClosed={async () => {
             setShowCloseShiftModal(false)
             await supabase.auth.signOut()
-            window.location.href = '/login'
+            globalThis.location.href = '/login'
           }}
         />
       )}

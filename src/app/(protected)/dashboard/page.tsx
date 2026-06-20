@@ -129,7 +129,7 @@ export default function DashboardPage() {
         .from('shifts')
         .select(`
           id, opened_at, opening_balance,
-          profiles(full_name, email),
+          profiles:profiles!shifts_cashier_id_fkey(full_name, email),
           branches(name)
         `)
         .eq('status', 'open')

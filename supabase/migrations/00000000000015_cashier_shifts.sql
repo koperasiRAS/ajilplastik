@@ -93,6 +93,7 @@ DECLARE
   v_total_cash numeric := 0;
   v_total_transfer numeric := 0;
   v_total_qris numeric := 0;
+  v_total_expenses numeric := 0;
   
   v_expected numeric := 0;
   v_difference numeric := 0;
@@ -128,7 +129,14 @@ BEGIN
   FROM public.transactions
   WHERE shift_id = p_shift_id AND status = 'void';
 
-  v_expected := v_shift.opening_balance + v_total_cash;
+  -- Aggregate expenses during shift period (taken from cash drawer)
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_expenses
+  FROM public.expenses
+  WHERE branch_id = v_shift.branch_id
+    AND created_at >= v_shift.opened_at
+    AND created_at <= now();
+
+  v_expected := v_shift.opening_balance + v_total_cash - v_total_expenses;
   v_difference := p_closing_balance_actual - v_expected;
 
   UPDATE public.shifts
@@ -142,7 +150,8 @@ BEGIN
         'total_voids', v_total_voids,
         'total_cash', v_total_cash,
         'total_transfer', v_total_transfer,
-        'total_qris', v_total_qris
+        'total_qris', v_total_qris,
+        'total_expenses', v_total_expenses
       )
   WHERE id = p_shift_id;
 
@@ -156,7 +165,8 @@ BEGIN
         'total_voids', v_total_voids,
         'total_cash', v_total_cash,
         'total_transfer', v_total_transfer,
-        'total_qris', v_total_qris
+        'total_qris', v_total_qris,
+        'total_expenses', v_total_expenses
     )
   );
 EXCEPTION WHEN OTHERS THEN

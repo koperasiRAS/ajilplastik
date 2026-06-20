@@ -44,18 +44,20 @@ export default function ShiftsPage() {
     setProfile(prof)
 
     // Fetch shifts. RLS will ensure Kasir only sees theirs. Owner sees all.
+    // Must use foreign key hint because profiles is referenced by multiple columns
     const { data: shiftsData, error } = await supabase
       .from('shifts')
       .select(`
         *,
         branches(name),
-        profiles(full_name, email)
+        profiles:profiles!shifts_cashier_id_fkey(full_name, email)
       `)
       .order('opened_at', { ascending: false })
       .limit(50)
 
     if (error) {
-      toast.error('Gagal memuat histori shift')
+      console.error('Shift fetch error:', error)
+      toast.error('Gagal memuat histori shift: ' + error.message)
     } else {
       setShifts(shiftsData as any)
     }

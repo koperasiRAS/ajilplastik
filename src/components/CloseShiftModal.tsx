@@ -6,6 +6,8 @@ import { X, Loader2, Calculator, Wallet, AlertTriangle, CheckCircle2 } from 'luc
 type CloseShiftModalProps = {
   shiftId: string
   openingBalance: number
+  branchId: string
+  shiftOpenedAt: string
   onClose: () => void
   onClosed: () => void
 }
@@ -16,9 +18,10 @@ type Summary = {
   total_qris: number
   total_voids: number
   total_transactions: number
+  total_expenses: number
 }
 
-export default function CloseShiftModal({ shiftId, openingBalance, onClose, onClosed }: CloseShiftModalProps) {
+export default function CloseShiftModal({ shiftId, openingBalance, branchId, shiftOpenedAt, onClose, onClosed }: CloseShiftModalProps) {
   const [actualBalance, setActualBalance] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -31,6 +34,7 @@ export default function CloseShiftModal({ shiftId, openingBalance, onClose, onCl
 
   const fetchSummary = async () => {
     try {
+      // Fetch transactions for this shift
       const { data: txs, error } = await supabase
         .from('transactions')
         .select('payment_method, total_amount, status')
@@ -38,12 +42,22 @@ export default function CloseShiftModal({ shiftId, openingBalance, onClose, onCl
 
       if (error) throw error
 
+      // Fetch expenses during shift period
+      const { data: exps, error: expError } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('branch_id', branchId)
+        .gte('created_at', shiftOpenedAt)
+
+      if (expError) throw expError
+
       let sum = {
         total_cash: 0,
         total_transfer: 0,
         total_qris: 0,
         total_voids: 0,
-        total_transactions: 0
+        total_transactions: 0,
+        total_expenses: 0
       }
 
       txs?.forEach(tx => {
@@ -57,6 +71,10 @@ export default function CloseShiftModal({ shiftId, openingBalance, onClose, onCl
         }
       })
 
+      exps?.forEach(exp => {
+        sum.total_expenses += Number(exp.amount)
+      })
+
       setSummary(sum)
     } catch (err: any) {
       toast.error('Gagal memuat ringkasan shift: ' + err.message)
@@ -65,7 +83,7 @@ export default function CloseShiftModal({ shiftId, openingBalance, onClose, onCl
     }
   }
 
-  const expectedBalance = openingBalance + (summary?.total_cash || 0)
+  const expectedBalance = openingBalance + (summary?.total_cash || 0) - (summary?.total_expenses || 0)
   const actualVal = actualBalance === '' ? 0 : parseInt(actualBalance)
   const difference = actualVal - expectedBalance
 
@@ -152,10 +170,16 @@ export default function CloseShiftModal({ shiftId, openingBalance, onClose, onCl
               <span className="text-gray-600">Modal Awal</span>
               <span className="font-medium">Rp {openingBalance.toLocaleString('id-ID')}</span>
             </div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">Penjualan Tunai (Cash)</span>
               <span className="font-medium text-blue-600">+ Rp {summary?.total_cash.toLocaleString('id-ID')}</span>
             </div>
+            {(summary?.total_expenses || 0) > 0 && (
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-gray-600">Pengeluaran (diambil dari laci)</span>
+                <span className="font-medium text-red-600">- Rp {summary?.total_expenses.toLocaleString('id-ID')}</span>
+              </div>
+            )}
             
             <div className="border-t border-gray-200 pt-3 pb-4">
               <div className="flex justify-between items-center">
