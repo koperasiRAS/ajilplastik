@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Store, Calendar, TrendingUp, TrendingDown, ArrowLeft, BarChart3, Package, DollarSign } from 'lucide-react'
+import { getLocalISODate } from '@/lib/date-utils'
 
 export default function ReportsPage() {
   const router = useRouter()
@@ -28,8 +29,8 @@ export default function ReportsPage() {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
     
-    setStartDate(firstDay.toISOString().split('T')[0])
-    setEndDate(now.toISOString().split('T')[0])
+    setStartDate(getLocalISODate(firstDay))
+    setEndDate(getLocalISODate(now))
     
     checkAuthAndFetchData()
   }, [])
@@ -55,7 +56,9 @@ export default function ReportsPage() {
       setProfile(prof)
       
       // Delay fetching until states are set, we will rely on a separate useEffect or direct call
-      fetchReportData(branches[0].id, startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], endDate || new Date().toISOString().split('T')[0])
+      const sDate = startDate || getLocalISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+      const eDate = endDate || getLocalISODate(new Date())
+      fetchReportData(branches[0].id, sDate, eDate)
     }
   }
 

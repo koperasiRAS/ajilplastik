@@ -22,18 +22,28 @@ export type ReceiptData = {
 export default function ReceiptPrint({ 
   data, 
   onClose,
+  onPrintRequest,
   isReprint = false
 }: { 
   data: ReceiptData | null, 
   onClose: () => void,
+  onPrintRequest: (size: '58mm' | '80mm') => void,
   isReprint?: boolean
 }) {
   if (!data) return null
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 z-100 flex items-center justify-center backdrop-blur-sm p-4 print:bg-transparent print:p-0 print:m-0">
-        <div className="bg-white w-full max-w-sm rounded-lg shadow-2xl overflow-hidden flex flex-col print:shadow-none print:w-full print:m-0 print:border-none">
+      <style>{`
+        @media print {
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4 print:bg-transparent print:p-0 print:m-0">
+        <div className="bg-white w-full max-w-sm rounded-lg shadow-2xl overflow-hidden flex flex-col print:shadow-none print:w-auto print:m-0 print:border-none">
           <div className="p-3 bg-green-600 text-white text-center flex items-center justify-center gap-2 print:hidden">
             <CheckCircle2 size={20} />
             <span className="font-bold">{isReprint ? 'Preview Cetak Ulang Struk' : 'Transaksi Berhasil'}</span>
@@ -96,19 +106,27 @@ export default function ReceiptPrint({
           </div>
         </div>
 
-        <div className="p-4 bg-gray-50 border-t border-gray-200 flex gap-3 print:hidden">
+        <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 print:hidden">
           <button 
             onClick={onClose}
             className="flex-1 bg-white border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Tutup
           </button>
-          <button 
-            onClick={() => window.print()}
-            className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition-colors shadow-sm"
-          >
-            <Printer size={18} /> Cetak Struk
-          </button>
+          <div className="flex flex-[2] gap-2">
+            <button 
+              onClick={() => onPrintRequest('58mm')}
+              className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-1 transition-colors shadow-sm text-sm"
+            >
+              <Printer size={16} /> 58mm
+            </button>
+            <button 
+              onClick={() => onPrintRequest('80mm')}
+              className="flex-1 bg-blue-800 text-white font-semibold py-2 rounded-lg hover:bg-blue-900 flex items-center justify-center gap-1 transition-colors shadow-sm text-sm"
+            >
+              <Printer size={16} /> 80mm
+            </button>
+          </div>
         </div>
       </div>
       </div>

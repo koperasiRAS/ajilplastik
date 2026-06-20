@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, LogOut, ChartLine, CheckCircle2, Printer } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
+import ReceiptPrint80mm from '@/components/ReceiptPrint80mm'
+import { getLocalISODate } from '@/lib/date-utils'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -23,9 +25,12 @@ export default function DashboardPage() {
   const [stockAlerts, setStockAlerts] = useState<any[]>([])
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [reprintModal, setReprintModal] = useState<ReceiptData | null>(null)
+  const [printSize, setPrintSize] = useState<'58mm' | '80mm'>('58mm')
 
   useEffect(() => {
     checkAuthAndFetchData()
+    const saved = localStorage.getItem('ajil-print-size') as '58mm' | '80mm'
+    if (saved === '80mm' || saved === '58mm') setPrintSize(saved)
   }, [])
 
   const checkAuthAndFetchData = async () => {
@@ -65,8 +70,8 @@ export default function DashboardPage() {
     const startDate = new Date()
     startDate.setDate(endDate.getDate() - 6)
 
-    const startStr = startDate.toISOString().split('T')[0]
-    const endStr = endDate.toISOString().split('T')[0]
+    const startStr = getLocalISODate(startDate)
+    const endStr = getLocalISODate(endDate)
 
     // Fetch Summary (Owner: All cashiers, Cashier: Only self, for today only if cashier)
     const summaryStart = role === 'owner' ? startStr : endStr // Cashier only today
@@ -132,6 +137,14 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const handlePrintRequest = (size: '58mm' | '80mm') => {
+    setPrintSize(size)
+    localStorage.setItem('ajil-print-size', size)
+    setTimeout(() => {
+      window.print()
+    }, 100)
   }
 
   const formatRp = (num: number) => {
@@ -464,11 +477,23 @@ export default function DashboardPage() {
       </main>
       </div>
       {/* REPRINT MODAL */}
-      <ReceiptPrint 
-        data={reprintModal}
-        onClose={() => setReprintModal(null)}
-        isReprint={true}
-      />
+      {reprintModal && (
+        printSize === '58mm' ? (
+          <ReceiptPrint 
+            data={reprintModal}
+            onClose={() => setReprintModal(null)}
+            onPrintRequest={handlePrintRequest}
+            isReprint={true}
+          />
+        ) : (
+          <ReceiptPrint80mm 
+            data={reprintModal}
+            onClose={() => setReprintModal(null)}
+            onPrintRequest={handlePrintRequest}
+            isReprint={true}
+          />
+        )
+      )}
     </>
   )
 }

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, CheckCircle2, Store, Printer } from 'lucide-react'
+import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, CheckCircle2, Store, Printer, Unlock } from 'lucide-react'
 import Link from 'next/link'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
+import ReceiptPrint80mm from '@/components/ReceiptPrint80mm'
+import { initQZ, openCashDrawer } from '@/lib/qz-tray'
 
 // Types
 type ProductUnit = {
@@ -59,6 +61,9 @@ export default function POSPage() {
   const [amountPaid, setAmountPaid] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  
+  const [printSize, setPrintSize] = useState<'58mm' | '80mm'>('58mm')
+  const [qzStatus, setQzStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -71,6 +76,13 @@ export default function POSPage() {
 
   useEffect(() => {
     fetchInitialData()
+    const saved = localStorage.getItem('ajil-print-size') as '58mm' | '80mm'
+    if (saved === '80mm' || saved === '58mm') setPrintSize(saved)
+    
+    // Connect to QZ Tray
+    initQZ().then(connected => {
+      setQzStatus(connected ? 'connected' : 'disconnected')
+    })
   }, [])
 
   // Auto-focus search on load (good for barcode scanners)
@@ -350,6 +362,15 @@ export default function POSPage() {
       cashierName: profile?.role.toUpperCase()
     })
 
+    // Auto open drawer for cash payments
+    if (paymentMethod === 'cash') {
+      try {
+        await openCashDrawer()
+      } catch (err) {
+        alert('Gagal membuka laci otomatis. Pastikan QZ Tray menyala, lalu buka manual dengan kunci atau tombol Buka Laci.')
+      }
+    }
+
     setCart([])
     setAmountPaid(0)
     setDiscountValue(0)
@@ -357,6 +378,37 @@ export default function POSPage() {
   }
 
   const formatRp = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num)
+
+  const handlePrintRequest = (size: '58mm' | '80mm') => {
+    setPrintSize(size)
+    localStorage.setItem('ajil-print-size', size)
+    setTimeout(() => {
+      window.print()
+    }, 100)
+  }
+
+  const handleManualOpenDrawer = async () => {
+    const reason = window.prompt("Alasan membuka laci (wajib diisi):")
+    if (!reason) return
+
+    try {
+      // Catat ke log
+      const { error } = await supabase.from('cash_drawer_logs').insert({
+        branch_id: profile.branch_id,
+        opened_by: profile.id,
+        reason: reason
+      })
+
+      if (error) {
+        alert('Gagal mencatat log, laci batal dibuka.')
+        return
+      }
+
+      await openCashDrawer()
+    } catch (err) {
+      alert('Gagal membuka laci. Pastikan QZ Tray berjalan.')
+    }
+  }
 
   if (isLoading) return <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-500">Memuat data POS...</div>
 
@@ -387,10 +439,27 @@ export default function POSPage() {
                 )}
               </p>
             </div>
+            
+            <div className="hidden sm:flex items-center gap-2 ml-4 px-3 py-1.5 bg-blue-700/50 rounded-full text-xs font-semibold">
+              <span className={`w-2 h-2 rounded-full animate-pulse ${qzStatus === 'connected' ? 'bg-green-400' : qzStatus === 'connecting' ? 'bg-yellow-400' : 'bg-red-400'}`}></span>
+              <span className="text-blue-100">{qzStatus === 'connected' ? 'QZ Active' : 'QZ Error'}</span>
+            </div>
           </div>
-          <div className="text-sm bg-blue-700/40 px-3 py-1.5 rounded-lg border border-blue-500/50 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-            Kasir: <span className="font-bold">{profile?.role.toUpperCase()}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleManualOpenDrawer}
+              className="flex items-center gap-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors px-3 py-2 rounded-lg shadow-sm"
+            >
+              <Unlock size={14}/>
+              <span className="hidden sm:inline">Buka Laci</span>
+            </button>
+            <Link 
+              href="/dashboard" 
+              className="flex items-center gap-2 text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors px-3 py-2 rounded-lg shadow-sm"
+            >
+              <ArrowLeft size={16}/>
+              <span className="hidden sm:inline">Kembali</span>
+            </Link>
           </div>
         </div>
 
@@ -681,10 +750,21 @@ export default function POSPage() {
       </div>
 
       {/* RECEIPT PREVIEW MODAL */}
-      <ReceiptPrint 
-        data={receiptModal} 
-        onClose={() => setReceiptModal(null)} 
-      />
+      {receiptModal && (
+        printSize === '58mm' ? (
+          <ReceiptPrint 
+            data={receiptModal} 
+            onClose={() => setReceiptModal(null)} 
+            onPrintRequest={handlePrintRequest}
+          />
+        ) : (
+          <ReceiptPrint80mm
+            data={receiptModal} 
+            onClose={() => setReceiptModal(null)} 
+            onPrintRequest={handlePrintRequest}
+          />
+        )
+      )}
     </>
   )
 }
