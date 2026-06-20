@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, CheckCircle2, Store, Printer, Unlock } from 'lucide-react'
 import Link from 'next/link'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
-import ReceiptPrint80mm from '@/components/ReceiptPrint80mm'
 import { initQZ, openCashDrawer } from '@/lib/qz-tray'
 
 // Types
@@ -62,7 +61,6 @@ export default function POSPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   
-  const [printSize, setPrintSize] = useState<'58mm' | '80mm'>('58mm')
   const [qzStatus, setQzStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
 
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -76,8 +74,6 @@ export default function POSPage() {
 
   useEffect(() => {
     fetchInitialData()
-    const saved = localStorage.getItem('ajil-print-size') as '58mm' | '80mm'
-    if (saved === '80mm' || saved === '58mm') setPrintSize(saved)
     
     // Connect to QZ Tray
     initQZ().then(connected => {
@@ -751,19 +747,11 @@ export default function POSPage() {
 
       {/* RECEIPT PREVIEW MODAL */}
       {receiptModal && (
-        printSize === '58mm' ? (
-          <ReceiptPrint 
-            data={receiptModal} 
-            onClose={() => setReceiptModal(null)} 
-            onPrintRequest={handlePrintRequest}
-          />
-        ) : (
-          <ReceiptPrint80mm
-            data={receiptModal} 
-            onClose={() => setReceiptModal(null)} 
-            onPrintRequest={handlePrintRequest}
-          />
-        )
+        <ReceiptPrint 
+          data={receiptModal} 
+          onClose={() => setReceiptModal(null)} 
+          onPrintRequest={handlePrintRequest}
+        />
       )}
     </>
   )
