@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import "./globals.css";
@@ -8,9 +8,22 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+
+export const viewport: Viewport = {
+  themeColor: '#2563EB',
+}
+
 export const metadata: Metadata = {
   title: "Ajil Plastik POS",
   description: "Sistem Point of Sales Ajil Plastik",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Ajil Plastik",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
