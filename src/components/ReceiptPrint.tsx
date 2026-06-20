@@ -42,7 +42,7 @@ export default function ReceiptPrint({
           }
         }
       `}</style>
-      <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4 print:bg-transparent print:p-0 print:m-0">
+      <div className="fixed inset-0 bg-black/70 z-100 flex items-center justify-center backdrop-blur-sm p-4 print:bg-transparent print:p-0 print:m-0">
         <div className="bg-white w-full max-w-sm rounded-lg shadow-2xl overflow-hidden flex flex-col print:shadow-none print:w-auto print:m-0 print:border-none">
           <div className="p-3 bg-green-600 text-white text-center flex items-center justify-center gap-2 print:hidden">
             <CheckCircle2 size={20} />
@@ -113,7 +113,7 @@ export default function ReceiptPrint({
           >
             Tutup
           </button>
-          <div className="flex flex-[2] gap-2">
+          <div className="flex flex-2 gap-2">
             <button 
               onClick={() => onPrintRequest()}
               className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-1 transition-colors shadow-sm text-sm"

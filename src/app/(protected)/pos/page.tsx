@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, CheckCircle2, Store, Printer, Unlock } from 'lucide-react'
+import { Search, ShoppingCart, Wallet, X, Plus, Minus, CreditCard, Banknote, QrCode, ArrowLeft, Store, Unlock } from 'lucide-react'
 import Link from 'next/link'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { initQZ, openCashDrawer } from '@/lib/qz-tray'
@@ -121,7 +121,7 @@ export default function POSPage() {
     const query = searchQuery.toLowerCase()
     const filtered = allProducts.filter(p => 
       p.name.toLowerCase().includes(query) || 
-      (p.barcode && p.barcode.toLowerCase().includes(query))
+      p.barcode?.toLowerCase().includes(query)
     )
 
     // Fitur: Jika input SAMA PERSIS dengan barcode salah satu produk
@@ -211,7 +211,7 @@ export default function POSPage() {
     }
   }
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     // Karena kita sudah pakai real-time filter, kita hanya perlu mengecek 
     // apakah ada satu produk tersisa di layar, jika ya tambahkan.
@@ -250,7 +250,7 @@ export default function POSPage() {
       } : c))
     } else {
       setCart([...cart, {
-        cart_id: Math.random().toString(36).substr(2, 9),
+        cart_id: Math.random().toString(36).substring(2, 11),
         product_id: product.id,
         product_name: product.name,
         product_unit_id: unit.id,
@@ -279,8 +279,8 @@ export default function POSPage() {
   }
 
   const setCartQtyExact = (cart_id: string, newQtyRaw: string) => {
-    const val = parseInt(newQtyRaw)
-    const newQty = isNaN(val) ? 0 : val
+    const val = Number.parseInt(newQtyRaw)
+    const newQty = Number.isNaN(val) ? 0 : val
     setCart(cart.map(c => {
       if (c.cart_id === cart_id) {
         return { ...c, quantity: newQty, subtotal: newQty * c.price }
@@ -334,7 +334,7 @@ export default function POSPage() {
 
     setIsSubmitting(false)
 
-    if (error || (data && data.success === false)) {
+    if (error || data?.success === false) {
       setCheckoutError(error?.message || data?.error || 'Terjadi kesalahan saat checkout.')
       return
     }
@@ -487,7 +487,10 @@ export default function POSPage() {
             {products.map(p => (
               <div 
                 key={p.id} 
+                role="button"
+                tabIndex={0}
                 onClick={() => handleProductClick(p)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProductClick(p) }}
                 className={`bg-white p-4 rounded-2xl shadow-sm border ${p.stock <= 0 ? 'border-red-200 bg-red-50/30 opacity-70 cursor-not-allowed' : 'border-slate-100 hover:border-blue-300 hover:shadow-md cursor-pointer active:scale-[0.97] hover:-translate-y-0.5'} transition-all duration-200 flex flex-col h-full select-none`}
               >
                 <div className="text-[10px] text-slate-400 mb-1.5 font-mono">{p.barcode || '-'}</div>

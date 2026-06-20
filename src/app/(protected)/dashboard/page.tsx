@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, LogOut, ChartLine, CheckCircle2, Printer, ServerCrash } from 'lucide-react'
+import { Store, TrendingUp, AlertCircle, Package, Receipt, ShoppingCart, ChartLine, CheckCircle2, Printer, ServerCrash } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import ReceiptPrint, { ReceiptData } from '@/components/ReceiptPrint'
 import { getLocalISODate } from '@/lib/date-utils'
@@ -131,19 +131,15 @@ export default function DashboardPage() {
     await fetchDashboardData(profile.role, newBranchId, profile.id)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   const handlePrintRequest = () => {
     setTimeout(() => {
-      window.print()
+      globalThis.window.print()
     }, 100)
   }
 
   const handleResetTransactions = async () => {
-    if (!confirm('PERINGATAN KERAS!\\n\\nApakah Anda yakin ingin MENGHAPUS SEMUA DATA TRANSAKSI? Ini akan menghapus histori penjualan, pengeluaran, pemasukan, log laci, dan mereset stok ke 0! Data produk tidak akan dihapus.\\n\\nKetik "OK" jika Anda mengerti risikonya.')) return
+    if (!confirm(String.raw`PERINGATAN KERAS!\n\nApakah Anda yakin ingin MENGHAPUS SEMUA DATA TRANSAKSI? Ini akan menghapus histori penjualan, pengeluaran, pemasukan, log laci, dan mereset stok ke 0! Data produk tidak akan dihapus.\n\nKetik "OK" jika Anda mengerti risikonya.`)) return
     
     // Double confirmation
     const challenge = prompt('Ketik "HAPUS" untuk melanjutkan reset database:')
@@ -159,7 +155,7 @@ export default function DashboardPage() {
       if (data?.success === false) throw new Error(data.error)
       
       alert('Database transaksi berhasil direset! Halaman akan dimuat ulang.')
-      window.location.reload()
+      globalThis.window.location.reload()
     } catch (err: any) {
       console.error(err)
       alert('Gagal mereset database: ' + (err.message || err))
