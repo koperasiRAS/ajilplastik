@@ -232,8 +232,7 @@ export default function InventoryPage() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Produk</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Satuan</th>
-                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Stok Dasar</th>
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Stok</th>
                   {profile?.role === 'owner' && (
                     <th scope="col" className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Aksi</th>
                   )}
@@ -268,21 +267,12 @@ export default function InventoryPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-slate-700">{p.product_units.length} Satuan</div>
-                      <div className="text-[11px] font-semibold text-slate-500 mt-2 flex gap-1.5 flex-wrap">
-                        {p.product_units.map(u => (
-                          <span key={u.id} className={`px-2 py-1 rounded-md border ${u.is_base_unit ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                            {u.name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className={`inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-sm font-black ${
                         p.stock <= LOW_STOCK_THRESHOLD && p.is_active ? 'bg-red-50 text-red-600 border border-red-200 shadow-sm' : 'bg-green-50 text-green-700 border border-green-200 shadow-sm'
                       }`}>
-                        {p.stock} <span className="font-semibold ml-1 text-xs">{p.product_units.find(u => u.is_base_unit)?.name || 'Unit'}</span>
+                        {p.stock}
                       </div>
                       {p.stock <= LOW_STOCK_THRESHOLD && p.is_active && (
                         <div className="text-[11px] text-red-500 mt-2 flex items-center justify-center gap-1 font-bold animate-pulse">

@@ -24,33 +24,14 @@ export default function ProductFormModal({ product, categories, branchId, userId
   const [description, setDescription] = useState(product?.description || '')
   const [initialStock, setInitialStock] = useState<number>(0)
   
-  const [units, setUnits] = useState<Partial<ProductUnit>[]>(
-    product?.product_units || [{ name: 'Pcs', conversion_to_base: 1, is_base_unit: true, sell_price: 0, buy_price: 0 }]
-  )
+  const baseUnit = product?.product_units?.[0] || { name: 'Pcs', sell_price: 0, buy_price: 0 }
+  const [sellPrice, setSellPrice] = useState<number>(baseUnit.sell_price || 0)
+  const [buyPrice, setBuyPrice] = useState<number>(baseUnit.buy_price || 0)
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const addUnit = () => {
-    setUnits([...units, { name: '', conversion_to_base: 1, is_base_unit: false, sell_price: 0, buy_price: 0 }])
-  }
 
-  const updateUnit = (index: number, field: keyof ProductUnit, value: any) => {
-    const newUnits = [...units]
-    if (field === 'is_base_unit' && value === true) {
-      // Unset others
-      newUnits.forEach(u => u.is_base_unit = false)
-      newUnits[index].is_base_unit = true
-      newUnits[index].conversion_to_base = 1 // Base unit always 1
-    } else {
-      newUnits[index] = { ...newUnits[index], [field]: value }
-    }
-    setUnits(newUnits)
-  }
-
-  const removeUnit = (index: number) => {
-    setUnits(units.filter((_, i) => i !== index))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,16 +40,7 @@ export default function ProductFormModal({ product, categories, branchId, userId
     // Validations
     if (!name.trim()) return setError('Nama produk wajib diisi.')
     if (!categoryId) return setError('Pilih kategori produk.')
-    if (units.length === 0) return setError('Minimal harus ada 1 satuan.')
-    
-    const baseUnits = units.filter(u => u.is_base_unit)
-    if (baseUnits.length !== 1) return setError('Harus ada tepat SATU satuan dasar (Base Unit).')
-    
-    for (const u of units) {
-      if (!u.name?.trim()) return setError('Nama satuan tidak boleh kosong.')
-      if ((u.conversion_to_base || 0) <= 0) return setError('Konversi satuan harus lebih dari 0.')
-      if ((u.sell_price || 0) < 0) return setError('Harga jual tidak boleh negatif.')
-    }
+    if (sellPrice < 0) return setError('Harga jual tidak boleh negatif.')
 
     setIsSubmitting(true)
 
@@ -86,23 +58,21 @@ export default function ProductFormModal({ product, categories, branchId, userId
 
       // 2. Update units (sederhana: hapus yang ada, insert baru, TAPI jika unit dipakai di transaksi, delete akan gagal).
       // Pendekatan lebih aman: UPSERT
-      const unitsToUpsert = units.map(u => ({
-        id: u.id || undefined, // undefined will create new uuid on server if omitted, wait supabase expects omit or uuid.
+      // 2. Update the primary unit (Pcs)
+      const uToUpdate = {
+        id: product.product_units[0]?.id,
         product_id: product.id,
-        name: u.name,
-        conversion_to_base: u.conversion_to_base,
-        is_base_unit: u.is_base_unit,
-        sell_price: u.sell_price,
-        buy_price: u.buy_price || null
-      }))
+        name: product.product_units[0]?.name || 'Pcs',
+        conversion_to_base: 1,
+        is_base_unit: true,
+        sell_price: sellPrice,
+        buy_price: buyPrice || null
+      }
 
-      // For safety in this MVP, we try to upsert.
-      for (const u of unitsToUpsert) {
-        if (u.id) {
-          await supabase.from('product_units').update(u).eq('id', u.id)
-        } else {
-          await supabase.from('product_units').insert(u)
-        }
+      if (uToUpdate.id) {
+        await supabase.from('product_units').update(uToUpdate).eq('id', uToUpdate.id)
+      } else {
+        await supabase.from('product_units').insert(uToUpdate)
       }
       
       onSuccess()
@@ -115,7 +85,7 @@ export default function ProductFormModal({ product, categories, branchId, userId
         p_barcode: barcode || null,
         p_name: name,
         p_description: description,
-        p_units: units,
+        p_units: [{ name: 'Pcs', conversion_to_base: 1, is_base_unit: true, sell_price: sellPrice, buy_price: buyPrice }],
         p_initial_stock: initialStock,
         p_user_id: userId
       })
@@ -186,53 +156,19 @@ export default function ProductFormModal({ product, categories, branchId, userId
               )}
             </div>
 
-            {/* RIGHT: Satuan Harga */}
+            {/* RIGHT: Harga */}
             <div className="space-y-4">
-              <div className="flex justify-between items-end border-b pb-2">
-                <h3 className="font-bold text-gray-700">Satuan & Harga</h3>
-                <button type="button" onClick={addUnit} className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
-                  <Plus size={16} /> Tambah Satuan
-                </button>
-              </div>
+              <h3 className="font-bold text-gray-700 border-b pb-2">Harga Produk</h3>
 
-              <div className="space-y-4">
-                {units.map((unit, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl border relative transition-colors ${unit.is_base_unit ? 'bg-blue-50/50 border-blue-300 ring-1 ring-blue-100' : 'bg-white border-gray-200'}`}>
-                    
-                    {units.length > 1 && (
-                      <button type="button" onClick={() => removeUnit(idx)} className="absolute -top-3 -right-3 bg-white border border-gray-200 p-1.5 text-gray-400 hover:text-red-600 hover:border-red-200 rounded-full shadow-sm">
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Nama Satuan <span className="text-red-500">*</span></label>
-                        <input type="text" value={unit.name} onChange={e => updateUnit(idx, 'name', e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="Pcs/Lusin/Dus" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Setara dgn (Base) <span className="text-red-500">*</span></label>
-                        <input type="number" min="1" value={unit.conversion_to_base} disabled={unit.is_base_unit} onChange={e => updateUnit(idx, 'conversion_to_base', Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 disabled:text-gray-500" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Harga Beli (Modal)</label>
-                        <input type="number" min="0" value={unit.buy_price || ''} onChange={e => updateUnit(idx, 'buy_price', Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm" placeholder="0" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Harga Jual <span className="text-red-500">*</span></label>
-                        <input type="number" min="0" value={unit.sell_price} onChange={e => updateUnit(idx, 'sell_price', Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm font-bold text-blue-600" placeholder="0" />
-                      </div>
-                    </div>
-
-                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                      <input type="radio" name="baseUnit" checked={unit.is_base_unit} onChange={() => updateUnit(idx, 'is_base_unit', true)} className="text-blue-600 focus:ring-blue-500" />
-                      <span className={`text-xs font-medium ${unit.is_base_unit ? 'text-blue-700 font-bold' : 'text-gray-600'}`}>Jadikan Satuan Dasar (Base Unit)</span>
-                    </label>
-                  </div>
-                ))}
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Beli (Modal)</label>
+                  <input type="number" min="0" value={buyPrice || ''} onChange={e => setBuyPrice(Number(e.target.value))} className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Jual <span className="text-red-500">*</span></label>
+                  <input type="number" min="0" value={sellPrice || ''} onChange={e => setSellPrice(Number(e.target.value))} className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-600 text-lg" placeholder="0" />
+                </div>
               </div>
             </div>
           </div>
