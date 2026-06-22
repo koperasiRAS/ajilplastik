@@ -90,7 +90,22 @@ export default function DashboardPage() {
         p_cashier_id: null
       })
       
-      if (sumData) setSummary(sumData)
+      if (sumData) {
+        // Pad daily_trend with 0 for days without transactions so Recharts can draw a line
+        const filledTrend = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          const dateStr = getLocalISODate(d);
+          const existing = sumData.daily_trend?.find((t: any) => t.date === dateStr);
+          filledTrend.push({
+            date: dateStr,
+            omzet: existing ? Number(existing.omzet) : 0
+          });
+        }
+        sumData.daily_trend = filledTrend;
+        setSummary(sumData)
+      }
     } else {
       // KASIR LOGIC: Only count data from ACTIVE shift
       const { data: activeShift } = await supabase.from('shifts')
