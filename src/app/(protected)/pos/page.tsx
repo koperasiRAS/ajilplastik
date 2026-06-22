@@ -558,8 +558,12 @@ export default function POSPage() {
                 <h3 className="font-bold text-slate-800 leading-snug mb-3 flex-1">{p.name}</h3>
                 <div className="flex justify-between items-end mt-2">
                   <div className="text-blue-600 font-extrabold">{p.product_units.length > 0 ? formatRp(p.product_units[0].sell_price) : '-'}</div>
-                  <div className={`text-[11px] font-bold px-2 py-1 rounded-md ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    Stok: {p.stock}
+                  <div className={`text-[11px] font-bold px-2 py-1 rounded-md ${
+                    p.stock > 5 ? 'bg-green-100 text-green-700' : 
+                    p.stock > 0 ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {p.stock > 0 && p.stock <= 5 ? `Sisa: ${p.stock}` : `Stok: ${p.stock}`}
                   </div>
                 </div>
               </div>
@@ -782,11 +786,13 @@ export default function POSPage() {
       )}
       </div>
 
-      {/* RECEIPT PREVIEW MODAL */}
       {receiptModal && (
         <ReceiptPrint 
           data={receiptModal} 
-          onClose={() => setReceiptModal(null)} 
+          onClose={() => {
+            setReceiptModal(null)
+            setTimeout(() => searchInputRef.current?.focus(), 100)
+          }} 
           onPrintRequest={handlePrintRequest}
         />
       )}

@@ -28,6 +28,13 @@ export default function ProductFormModal({ product, categories, branchId, userId
   const [sellPrice, setSellPrice] = useState<number>(baseUnit.sell_price || 0)
   const [buyPrice, setBuyPrice] = useState<number>(baseUnit.buy_price || 0)
   
+  const existingPack = product?.product_units?.find(u => !u.is_base_unit)
+  const [hasPackUnit, setHasPackUnit] = useState(!!existingPack)
+  const [packName, setPackName] = useState(existingPack?.name || 'Pack')
+  const [packConversion, setPackConversion] = useState<number>(existingPack?.conversion_to_base || 10)
+  const [packSellPrice, setPackSellPrice] = useState<number>(existingPack?.sell_price || 0)
+  const [packBuyPrice, setPackBuyPrice] = useState<number>(existingPack?.buy_price || 0)
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,28 +63,60 @@ export default function ProductFormModal({ product, categories, branchId, userId
         return setError(errProd.message.includes('unique') ? 'Barcode sudah dipakai.' : errProd.message)
       }
 
-      // 2. Update units (sederhana: hapus yang ada, insert baru, TAPI jika unit dipakai di transaksi, delete akan gagal).
-      // Pendekatan lebih aman: UPSERT
       // 2. Update the primary unit (Pcs)
-      const uToUpdate = {
-        id: product.product_units[0]?.id,
+      const uToUpdateBase = {
+        id: product.product_units.find(u => u.is_base_unit)?.id,
         product_id: product.id,
-        name: product.product_units[0]?.name || 'Pcs',
+        name: product.product_units.find(u => u.is_base_unit)?.name || 'Pcs',
         conversion_to_base: 1,
         is_base_unit: true,
         sell_price: sellPrice,
         buy_price: buyPrice || null
       }
 
-      if (uToUpdate.id) {
-        await supabase.from('product_units').update(uToUpdate).eq('id', uToUpdate.id)
+      if (uToUpdateBase.id) {
+        await supabase.from('product_units').update(uToUpdateBase).eq('id', uToUpdateBase.id)
       } else {
-        await supabase.from('product_units').insert(uToUpdate)
+        await supabase.from('product_units').insert(uToUpdateBase)
+      }
+
+      // 3. Update the secondary unit (Pack)
+      if (hasPackUnit) {
+        const uToUpdatePack = {
+          id: existingPack?.id,
+          product_id: product.id,
+          name: packName,
+          conversion_to_base: packConversion,
+          is_base_unit: false,
+          sell_price: packSellPrice,
+          buy_price: packBuyPrice || null
+        }
+        if (uToUpdatePack.id) {
+          await supabase.from('product_units').update(uToUpdatePack).eq('id', uToUpdatePack.id)
+        } else {
+          await supabase.from('product_units').insert(uToUpdatePack)
+        }
+      } else if (existingPack?.id) {
+        await supabase.from('product_units').delete().eq('id', existingPack.id)
       }
       
       onSuccess()
       onClose()
     } else {
+      const units = [
+        { name: 'Pcs', conversion_to_base: 1, is_base_unit: true, sell_price: sellPrice, buy_price: buyPrice }
+      ]
+      
+      if (hasPackUnit) {
+        units.push({
+          name: packName,
+          conversion_to_base: packConversion,
+          is_base_unit: false,
+          sell_price: packSellPrice,
+          buy_price: packBuyPrice
+        })
+      }
+
       // CREATE MODE (Using RPC)
       const { data, error: errRpc } = await supabase.rpc('fn_create_product_with_initial_stock', {
         p_branch_id: branchId,
@@ -85,7 +124,7 @@ export default function ProductFormModal({ product, categories, branchId, userId
         p_barcode: barcode || null,
         p_name: name,
         p_description: description,
-        p_units: [{ name: 'Pcs', conversion_to_base: 1, is_base_unit: true, sell_price: sellPrice, buy_price: buyPrice }],
+        p_units: units,
         p_initial_stock: initialStock,
         p_user_id: userId
       })
@@ -169,6 +208,37 @@ export default function ProductFormModal({ product, categories, branchId, userId
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Jual <span className="text-red-500">*</span></label>
                   <input type="number" min="0" value={sellPrice || ''} onChange={e => setSellPrice(Number(e.target.value))} className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-600 text-lg" placeholder="0" />
                 </div>
+              </div>
+
+              {/* PACK UNIT CHECKBOX AND FIELDS */}
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={hasPackUnit} onChange={(e) => setHasPackUnit(e.target.checked)} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                  <span className="text-sm font-bold text-gray-700">Aktifkan Harga Grosir/Pack</span>
+                </label>
+                
+                {hasPackUnit && (
+                  <div className="pt-2 border-t border-gray-100 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Satuan</label>
+                        <input type="text" value={packName} onChange={e => setPackName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Misal: Pack, Dus" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Isi 1 {packName} (Pcs)</label>
+                        <input type="number" min="2" value={packConversion || ''} onChange={e => setPackConversion(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Beli ({packName})</label>
+                      <input type="number" min="0" value={packBuyPrice || ''} onChange={e => setPackBuyPrice(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Jual ({packName}) <span className="text-red-500">*</span></label>
+                      <input type="number" min="0" value={packSellPrice || ''} onChange={e => setPackSellPrice(Number(e.target.value))} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-600 text-lg" placeholder="0" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
