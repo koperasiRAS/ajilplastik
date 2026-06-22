@@ -131,18 +131,7 @@ export default function POSPage() {
       p.barcode?.toLowerCase().includes(query)
     )
 
-    // Fitur: Jika input SAMA PERSIS dengan barcode salah satu produk
-    // otomatis ditambahkan ke keranjang tanpa perlu tekan Enter
-    const exactMatch = filtered.find(p => p.barcode?.toLowerCase() === query)
-    
-    if (exactMatch) {
-      handleProductClick(exactMatch)
-      setSearchQuery('')
-      if (searchInputRef.current) searchInputRef.current.value = ''
-      setProducts(allProducts)
-    } else {
-      setProducts(filtered)
-    }
+    setProducts(filtered)
   }, [searchQuery, allProducts])
 
   async function fetchInitialData() {
@@ -233,12 +222,25 @@ export default function POSPage() {
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Karena kita sudah pakai real-time filter, kita hanya perlu mengecek 
-    // apakah ada satu produk tersisa di layar, jika ya tambahkan.
-    if (products.length === 1) {
+    if (!searchQuery) return
+
+    const query = searchQuery.toLowerCase()
+    
+    // 1. Prioritaskan SAMA PERSIS dengan barcode
+    const exactMatch = allProducts.find(p => p.barcode?.toLowerCase() === query)
+    
+    if (exactMatch) {
+      handleProductClick(exactMatch)
+      setSearchQuery('')
+      if (searchInputRef.current) searchInputRef.current.value = ''
+      setProducts(allProducts)
+    } 
+    // 2. Jika tidak ada exact match, tapi sisa 1 hasil filter
+    else if (products.length === 1) {
       handleProductClick(products[0])
       setSearchQuery('')
       if (searchInputRef.current) searchInputRef.current.value = ''
+      setProducts(allProducts)
     }
   }
 
