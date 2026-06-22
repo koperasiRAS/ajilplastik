@@ -317,6 +317,27 @@ export default function POSPage() {
     }))
   }
 
+  const changeCartItemUnit = (cart_id: string, new_unit_id: string) => {
+    setCart(cart.map(c => {
+      if (c.cart_id === cart_id) {
+        const product = allProducts.find(p => p.id === c.product_id)
+        const unit = product?.product_units.find(u => u.id === new_unit_id)
+        if (unit) {
+          return {
+            ...c,
+            product_unit_id: unit.id,
+            unit_name: unit.name,
+            conversion_to_base: unit.conversion_to_base,
+            price: unit.sell_price,
+            buy_price: unit.buy_price,
+            subtotal: c.quantity * unit.sell_price
+          }
+        }
+      }
+      return c
+    }))
+  }
+
   const handleCheckout = async () => {
     if (paymentMethod === 'cash' && amountPaid < cartTotal) {
       setCheckoutError('Jumlah uang tunai kurang dari total belanja!')
@@ -609,7 +630,26 @@ export default function POSPage() {
                     <span className="font-black text-blue-600 text-sm whitespace-nowrap ml-2">{formatRp(item.subtotal)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-slate-500">{formatRp(item.price)}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-slate-500">{formatRp(item.price)}</span>
+                      {(() => {
+                        const product = allProducts.find(p => p.id === item.product_id)
+                        if (product && product.product_units.length > 1) {
+                          return (
+                            <select 
+                              value={item.product_unit_id}
+                              onChange={(e) => changeCartItemUnit(item.cart_id, e.target.value)}
+                              className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-[10px] text-slate-700 font-bold outline-none cursor-pointer"
+                            >
+                              {product.product_units.map(u => (
+                                <option key={u.id} value={u.id}>/ {u.name}</option>
+                              ))}
+                            </select>
+                          )
+                        }
+                        return <span className="text-[10px] text-slate-400 font-medium">/ {item.unit_name}</span>
+                      })()}
+                    </div>
                     <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
                       <button onClick={() => updateCartQty(item.cart_id, -1)} className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-colors active:scale-90 shadow-sm"><Minus size={14} strokeWidth={3}/></button>
                       <input 
